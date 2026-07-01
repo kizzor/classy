@@ -1,0 +1,6 @@
+{
+  "name": "Classifieds Hub",
+  "description": "A minimalist, responsive peer-to-peer classifieds platform to search, view details, contact sellers, and manage local listings.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
