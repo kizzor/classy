@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { dbService } from '../services/db';
 import { Listing, ChatMessage, User } from '../types';
+import { requestNotificationPermission, showNewMessageNotification } from '../services/notifications';
 
 interface AppContextProps {
   listings: Listing[];
@@ -20,6 +21,7 @@ interface AppContextProps {
   simulatePaymentSuccess: () => void;
   hasPaidTemporaryToken: boolean;
   setHasPaidTemporaryToken: (paid: boolean) => void;
+  notificationsEnabled: boolean;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -34,6 +36,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   
   // Track if user paid 100 INR to temporarily unlock another posting
   const [hasPaidTemporaryToken, setHasPaidTemporaryToken] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   // Default active user Sarah Connor - initialized with 0 active listings to let users test posting right away!
   const [currentUser, setCurrentUser] = useState<User | null>({
@@ -43,6 +46,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
     listingsPostedCount: 0,
   });
+
+  // Request notification permission on first user interaction
+  useEffect(() => {
+    const handleFirstInteraction = async () => {
+      const granted = await requestNotificationPermission();
+      setNotificationsEnabled(granted);
+      document.removeEventListener('click', handleFirstInteraction);
+    };
+    document.addEventListener('click', handleFirstInteraction);
+    return () => document.removeEventListener('click', handleFirstInteraction);
+  }, []);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -81,18 +95,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const sendChatMessage = async (recipientId: string, productId: string, productTitle: string, text: string) => {
-    if (!currentUser) {
-      throw new Error('User must be logged in to send message');
+    let sender = currentUser;
+    if (!sender) {
+      sender = {
+        id: 'user_sarah_connor',
+        name: 'Sarah Connor',
+        email: 'sarah.c@classifiedshub.in',
+        avatar: '',
+        listingsPostedCount: 0,
+      };
+      setCurrentUser(sender);
     }
     const created = await dbService.sendChatMessage({
-      senderId: currentUser.id,
-      senderName: currentUser.name,
+      senderId: sender.id,
+      senderName: sender.name,
       recipientId,
       productId,
       productTitle,
       text,
     });
     setChats((prev) => [...prev, created]);
+    
+    // Show notification for new message
+    showNewMessageNotification(created);
+    
     return created;
   };
 
@@ -134,6 +160,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         simulatePaymentSuccess,
         hasPaidTemporaryToken,
         setHasPaidTemporaryToken,
+        notificationsEnabled,
       }}
     >
       {children}

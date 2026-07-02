@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Coins, AlertCircle, ShieldCheck, Loader2, Sparkles, Image, Check, MapPin, Tag } from 'lucide-react';
+import { Coins, AlertCircle, ShieldCheck, Loader2, Sparkles, Image, Check, MapPin, Tag, Upload, X } from 'lucide-react';
 
 const CATEGORIES = ['Electronics', 'Furniture', 'Sports & Outdoors', 'Fashion'];
 
@@ -11,6 +11,9 @@ const IMAGE_TEMPLATES = [
   { name: 'Sofa', url: 'https://images.unsplash.com/photo-1484101403633-562f891dc89a?auto=format&fit=crop&w=600&q=80' },
   { name: 'Leather Jacket', url: 'https://images.unsplash.com/photo-1520639888713-7851133b1ed0?auto=format&fit=crop&w=600&q=80' }
 ];
+
+// Max image size: 100MB
+const MAX_IMAGE_SIZE = 100 * 1024 * 1024;
 
 export const PostAdModal: React.FC = () => {
   const {
@@ -35,6 +38,9 @@ export const PostAdModal: React.FC = () => {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isPostAdOpen) return null;
 
@@ -67,6 +73,55 @@ export const PostAdModal: React.FC = () => {
 
   const handleSelectTemplate = (url: string) => {
     setFormData((prev) => ({ ...prev, imageUrl: url }));
+    setUploadError('');
+  };
+
+  // Handle file upload - convert to base64 data URL
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select an image file (JPG, PNG, GIF)');
+      return;
+    }
+
+    // Validate file size
+    if (file.size > MAX_IMAGE_SIZE) {
+      setUploadError('Image must be under 100MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError('');
+
+    try {
+      const dataUrl = await convertToDataUrl(file);
+      setFormData((prev) => ({ ...prev, imageUrl: dataUrl }));
+    } catch (err) {
+      setUploadError('Failed to process image. Try a different file.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Convert file to base64 data URL
+  const convertToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Remove uploaded image
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({ ...prev, imageUrl: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,8 +160,8 @@ export const PostAdModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in" id="post-ad-modal-backdrop">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 flex flex-col transform transition-transform animate-scale-up">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 animate-fade-in" id="post-ad-modal-backdrop">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 flex flex-col transform transition-transform animate-scale-up max-h-[95vh] sm:max-h-[80vh]">
         
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
@@ -266,40 +321,94 @@ export const PostAdModal: React.FC = () => {
                 />
               </div>
 
-              {/* Image URL & Quick Templates */}
+              {/* Image Upload */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                  Product Image URL *
+                  Product Image *
                 </label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  required
-                  className="w-full text-sm border border-slate-200 bg-slate-50 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all mb-2"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                />
-
-                {/* Templates Selector */}
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Or Select Quick Preset:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {IMAGE_TEMPLATES.map((tmpl) => (
-                      <button
-                        key={tmpl.name}
-                        type="button"
-                        onClick={() => handleSelectTemplate(tmpl.url)}
-                        className={`text-[11px] px-2.5 py-1 rounded-md border transition-all font-medium ${
-                          formData.imageUrl === tmpl.url
-                            ? 'bg-emerald-600 border-emerald-600 text-white font-semibold'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {tmpl.name}
-                      </button>
-                    ))}
+                
+                {/* File Upload Area */}
+                {!formData.imageUrl ? (
+                  <div className="space-y-3">
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/30 transition-all"
+                    >
+                      <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-slate-600">Click to upload an image</p>
+                      <p className="text-xs text-slate-400 mt-1">JPG, PNG, GIF up to 100MB</p>
+                    </div>
+                    
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    
+                    {isUploading && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-emerald-600">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing image...
+                      </div>
+                    )}
+                    
+                    {uploadError && (
+                      <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 p-2 rounded-lg">
+                        <AlertCircle className="w-4 h-4" />
+                        {uploadError}
+                      </div>
+                    )}
+                    
+                    {/* Quick Templates */}
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Or select a quick preset:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {IMAGE_TEMPLATES.map((tmpl) => (
+                          <button
+                            key={tmpl.name}
+                            type="button"
+                            onClick={() => handleSelectTemplate(tmpl.url)}
+                            className="text-[11px] px-2.5 py-1 rounded-md border transition-all font-medium bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          >
+                            {tmpl.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* Image Preview */
+                  <div className="relative">
+                    <img 
+                      src={formData.imageUrl} 
+                      alt="Product preview" 
+                      className="w-full h-48 object-cover rounded-lg border border-slate-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute bottom-2 right-2 bg-white/90 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-white transition-colors border border-slate-200"
+                    >
+                      Change Image
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Action buttons */}
@@ -313,7 +422,7 @@ export const PostAdModal: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isUploading}
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm shadow-sm transition-colors disabled:opacity-50 flex items-center gap-1 cursor-pointer"
                   id="publish-ad-submit"
                 >

@@ -43,7 +43,7 @@ export const UserProfilePage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" id="user-profile-view">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 md:py-14" id="user-profile-view">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* Left Side: User profile statistics cards */}

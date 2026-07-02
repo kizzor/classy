@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Sparkles, Plus, Search, User, LogOut, LogIn, Menu, X, MessageSquare } from 'lucide-react';
+import { Sparkles, Plus, Search, User, LogOut, LogIn, Menu, X, MessageSquare, Bell, BellOff } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { currentUser, setIsPostAdOpen, searchQuery, setSearchQuery, toggleUserLogin, chats } = useApp();
+  const { currentUser, setIsPostAdOpen, searchQuery, setSearchQuery, toggleUserLogin, chats, notificationsEnabled } = useApp();
   const navigate = useNavigate();
 
   const handlePostAdClick = () => {
@@ -57,6 +57,21 @@ export const Navbar: React.FC = () => {
 
           {/* Desktop Right Side Panel */}
           <div className="hidden md:flex items-center gap-6">
+            {/* Notification Status */}
+            <div className="flex items-center gap-1.5 text-xs font-medium" title={notificationsEnabled ? 'Notifications enabled' : 'Notifications disabled'}>
+              {notificationsEnabled ? (
+                <>
+                  <Bell className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-600">Alerts On</span>
+                </>
+              ) : (
+                <>
+                  <BellOff className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-slate-400">Alerts Off</span>
+                </>
+              )}
+            </div>
+
             {/* Developer Sandbox Toggle */}
             <button
               onClick={toggleUserLogin}

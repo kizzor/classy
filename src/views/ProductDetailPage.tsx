@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { ArrowLeft, MapPin, Calendar, MessageSquare, ShieldCheck, User, Coins, Tag } from 'lucide-react';
+import { ArrowLeft, MapPin, MessageSquare, ShieldCheck, User, Tag } from 'lucide-react';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { listings, currentUser, sendChatMessage, toggleUserLogin } = useApp();
+  const { listings, currentUser, sendChatMessage } = useApp();
   
   const [messageText, setMessageText] = useState('Hi! Is this item still available? I am interested and would like to coordinate a public meet-up.');
   const [success, setSuccess] = useState(false);
@@ -17,14 +17,25 @@ export const ProductDetailPage: React.FC = () => {
 
   const product = listings.find((item) => item.id === id);
 
-  // Check if `#message-seller` was appended to scroll down to the contact form
+  // Scroll to the contact form when arriving via #message-seller hash
   useEffect(() => {
-    if (location.hash === '#message-seller' && messageBoxRef.current) {
-      setTimeout(() => {
-        messageBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+    if (location.hash !== '#message-seller') return;
+    const tryScroll = () => {
+      if (messageBoxRef.current) {
+        messageBoxRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return true;
+      }
+      return false;
+    };
+    // Try immediately, then retry until the element exists (handles data-loading race)
+    if (!tryScroll()) {
+      const interval = setInterval(() => {
+        if (tryScroll()) clearInterval(interval);
+      }, 100);
+      const timeout = setTimeout(() => clearInterval(interval), 3000);
+      return () => { clearInterval(interval); clearTimeout(timeout); };
     }
-  }, [location]);
+  }, [location, listings]);
 
   if (!product) {
     return (
@@ -42,11 +53,6 @@ export const ProductDetailPage: React.FC = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) {
-      alert('You must be logged in to contact the seller. We have logged you in for simulation!');
-      toggleUserLogin();
-      return;
-    }
     if (!messageText.trim()) return;
 
     setIsSending(true);
@@ -60,7 +66,7 @@ export const ProductDetailPage: React.FC = () => {
       setSuccess(true);
       setMessageText('');
       setTimeout(() => {
-        navigate('/profile'); // Redirect buyer to active message logs
+        navigate('/profile');
       }, 1500);
     } catch (err) {
       alert('Error sending message. Please try again.');
@@ -70,7 +76,7 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12" id="product-detail-view">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 md:py-12" id="product-detail-view">
       {/* Back navigation */}
       <div className="mb-6">
         <Link

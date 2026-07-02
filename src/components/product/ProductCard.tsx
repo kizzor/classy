@@ -27,7 +27,7 @@ export const ProductCard: React.FC<Listing> = ({
       className="group bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex flex-col h-full transition-all hover:shadow-md hover:border-slate-300"
     >
       {/* Product Image Gallery Wrapper */}
-      <Link to={`/product/${id}`} className="relative aspect-square bg-slate-100 overflow-hidden block">
+      <Link to={`/product/${id}`} className="relative aspect-[4/3] sm:aspect-square bg-slate-100 overflow-hidden block">
         <img
           src={imageUrl}
           alt={title}
