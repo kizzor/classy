@@ -1,20 +1,10 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Trash2, User, Mail, MessageSquare, AlertCircle, Sparkles, Plus, MapPin, Tag, LogIn } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Trash2, User, Mail, MessageSquare, AlertCircle, Sparkles, Plus, MapPin, Tag } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const UserProfilePage: React.FC = () => {
-  const { currentUser, listings, chats, deleteListing, setIsPostAdOpen, authLoading } = useApp();
-  const navigate = useNavigate();
-
-  if (authLoading) {
-    return (
-      <div className="max-w-xl mx-auto px-4 py-24 text-center">
-        <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin mx-auto" />
-        <p className="text-sm text-slate-500 mt-4">Loading...</p>
-      </div>
-    );
-  }
+  const { currentUser, listings, chats, deleteListing, setIsPostAdOpen, toggleUserLogin } = useApp();
 
   if (!currentUser) {
     return (
@@ -23,17 +13,16 @@ export const UserProfilePage: React.FC = () => {
           <User className="w-8 h-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Sign In Required</h2>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Access Restricted</h2>
           <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-            Please sign in to view your profile, manage listings, and chat with buyers/sellers.
+            Please login or toggle the Sandbox simulator state in the navigation panel to view your user dashboard.
           </p>
         </div>
         <button
-          onClick={() => navigate('/auth')}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shadow-sm inline-flex items-center gap-2"
+          onClick={toggleUserLogin}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-lg transition-colors shadow-sm"
         >
-          <LogIn className="w-4 h-4" />
-          Sign In
+          Activate Sarah Connor Session
         </button>
       </div>
     );

@@ -17,6 +17,8 @@ export interface Listing {
   category: string;
   sellerId: string;
   sellerName: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface ChatMessage {
@@ -28,4 +30,9 @@ export interface ChatMessage {
   productTitle: string;
   text: string;
   timestamp: string;
+}
+
+export interface GeoLocation {
+  latitude: number;
+  longitude: number;
 }

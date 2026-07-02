@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Coins, AlertCircle, ShieldCheck, Loader2, Sparkles, Image, Check, MapPin, Tag, Upload, X } from 'lucide-react';
+import { Coins, AlertCircle, ShieldCheck, Loader2, Sparkles, Image, Check, MapPin, Tag, Upload, X, Navigation } from 'lucide-react';
+import { getCurrentLocation } from '../../services/geolocation';
 
 const CATEGORIES = ['Electronics', 'Furniture', 'Sports & Outdoors', 'Fashion'];
 
@@ -40,6 +41,8 @@ export const PostAdModal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isPostAdOpen) return null;
@@ -74,6 +77,24 @@ export const PostAdModal: React.FC = () => {
   const handleSelectTemplate = (url: string) => {
     setFormData((prev) => ({ ...prev, imageUrl: url }));
     setUploadError('');
+  };
+
+  const handleDetectLocation = async () => {
+    setIsDetectingLocation(true);
+    try {
+      const location = await getCurrentLocation();
+      setCoordinates({ lat: location.latitude, lng: location.longitude });
+      // Reverse geocode to get location name (simplified)
+      setFormData((prev) => ({
+        ...prev,
+        location: prev.location || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+      }));
+    } catch (error) {
+      console.error('Location detection failed:', error);
+      alert('Could not detect your location. Please enter it manually.');
+    } finally {
+      setIsDetectingLocation(false);
+    }
   };
 
   // Handle file upload - convert to base64 data URL
@@ -140,6 +161,8 @@ export const PostAdModal: React.FC = () => {
         imageUrl: formData.imageUrl,
         location: formData.location,
         description: formData.description,
+        latitude: coordinates?.lat,
+        longitude: coordinates?.lng,
       });
 
       // Clear state and close modal
@@ -298,14 +321,34 @@ export const PostAdModal: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                   Listing Location *
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Saket, New Delhi or Bandra West, Mumbai"
-                  required
-                  className="w-full text-sm border border-slate-200 bg-slate-50 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. Saket, New Delhi or Bandra West, Mumbai"
+                    required
+                    className="flex-1 text-sm border border-slate-200 bg-slate-50 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleDetectLocation}
+                    disabled={isDetectingLocation}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg transition-colors disabled:opacity-50"
+                    title="Detect my location"
+                  >
+                    {isDetectingLocation ? (
+                      <Loader2 className="w-4 h-4 text-slate-600 animate-spin" />
+                    ) : (
+                      <Navigation className="w-4 h-4 text-slate-600" />
+                    )}
+                  </button>
+                </div>
+                {coordinates && (
+                  <p className="text-[10px] text-emerald-600 mt-1">
+                    Location detected: {coordinates.lat.toFixed(4)}, {coordinates.lng.toFixed(4)}
+                  </p>
+                )}
               </div>
 
               {/* Description */}

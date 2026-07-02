@@ -5,7 +5,7 @@ import { Layout } from './components/layout/Layout';
 import { HomePage } from './views/HomePage';
 import { ProductDetailPage } from './views/ProductDetailPage';
 import { UserProfilePage } from './views/UserProfilePage';
-import { AuthPage } from './views/AuthPage';
+import { ChatPage } from './views/ChatPage';
 import { PostAdModal } from './components/product/PostAdModal';
 
 export default function App() {
@@ -17,7 +17,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/profile" element={<UserProfilePage />} />
-            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/chat" element={<ChatPage />} />
           </Routes>
           
           {/* Global Sandbox Gated Ad Poster Modal */}

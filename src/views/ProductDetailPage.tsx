@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { ArrowLeft, MapPin, MessageSquare, ShieldCheck, User, Tag, LogIn } from 'lucide-react';
+import { ArrowLeft, MapPin, MessageSquare, ShieldCheck, User, Tag } from 'lucide-react';
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { listings, currentUser, sendChatMessage, authLoading } = useApp();
+  const { listings, currentUser, sendChatMessage } = useApp();
   
   const [messageText, setMessageText] = useState('Hi! Is this item still available? I am interested and would like to coordinate a public meet-up.');
   const [success, setSuccess] = useState(false);
@@ -27,7 +27,6 @@ export const ProductDetailPage: React.FC = () => {
       }
       return false;
     };
-    // Try immediately, then retry until the element exists (handles data-loading race)
     if (!tryScroll()) {
       const interval = setInterval(() => {
         if (tryScroll()) clearInterval(interval);
@@ -54,11 +53,6 @@ export const ProductDetailPage: React.FC = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageText.trim()) return;
-
-    if (!currentUser) {
-      navigate('/auth');
-      return;
-    }
 
     setIsSending(true);
     try {
@@ -186,22 +180,6 @@ export const ProductDetailPage: React.FC = () => {
             ) : success ? (
               <div className="bg-emerald-50 text-emerald-800 rounded-lg p-4 text-xs font-bold text-center border border-emerald-100 animate-pulse">
                 Message dispatched! Opening conversation center in profile dashboard...
-              </div>
-            ) : !currentUser ? (
-              /* Not logged in - show sign in prompt */
-              <div className="space-y-4">
-                <div className="bg-slate-50 rounded-lg p-4 text-center border border-slate-200">
-                  <p className="text-xs text-slate-600 font-medium mb-3">
-                    Sign in to contact the seller and send messages.
-                  </p>
-                  <button
-                    onClick={() => navigate('/auth')}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Sign In to Message
-                  </button>
-                </div>
               </div>
             ) : (
               <form onSubmit={handleSendMessage} className="space-y-4">

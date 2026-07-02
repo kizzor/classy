@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProductCard } from '../components/product/ProductCard';
 import { useApp } from '../context/AppContext';
-import { Smartphone, Armchair, Bike, Shirt, Compass, AlertCircle, Grid } from 'lucide-react';
+import { Smartphone, Armchair, Bike, Shirt, Compass, AlertCircle, Grid, Navigation, Loader2 } from 'lucide-react';
+import { getCurrentLocation, calculateDistance, formatDistance } from '../services/geolocation';
+import { GeoLocation } from '../types';
 
 const CATEGORIES = [
   { name: 'All', icon: Grid },
@@ -9,12 +11,50 @@ const CATEGORIES = [
   { name: 'Furniture', icon: Armchair },
   { name: 'Sports & Outdoors', icon: Bike },
   { name: 'Fashion', icon: Shirt },
+  { name: 'Others', icon: Compass },
+];
+
+const DISTANCE_OPTIONS = [
+  { label: 'Any Distance', value: 0 },
+  { label: 'Within 5km', value: 5 },
+  { label: 'Within 10km', value: 10 },
+  { label: 'Within 25km', value: 25 },
+  { label: 'Within 50km', value: 50 },
+  { label: 'Within 100km', value: 100 },
 ];
 
 export const HomePage: React.FC = () => {
   const { listings, loading, searchQuery, setSearchQuery, selectedCategory, setSelectedCategory } = useApp();
+  const [userLocation, setUserLocation] = useState<GeoLocation | null>(null);
+  const [maxDistance, setMaxDistance] = useState(0);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
-  // Filter listings based on search string and selected category tag
+  // Try to detect location on mount
+  useEffect(() => {
+    const detectLocation = async () => {
+      try {
+        const location = await getCurrentLocation();
+        setUserLocation(location);
+      } catch {
+        // Location not available, that's okay
+      }
+    };
+    detectLocation();
+  }, []);
+
+  const handleDetectLocation = async () => {
+    setIsDetectingLocation(true);
+    try {
+      const location = await getCurrentLocation();
+      setUserLocation(location);
+    } catch (error) {
+      alert('Could not detect your location. Please enable location services.');
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
+
+  // Filter listings based on search, category, and distance
   const filteredListings = listings.filter((item) => {
     const matchesSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -23,7 +63,19 @@ export const HomePage: React.FC = () => {
     
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
 
-    return matchesSearch && matchesCategory;
+    // Distance filter
+    let matchesDistance = true;
+    if (maxDistance > 0 && userLocation && item.latitude && item.longitude) {
+      const distance = calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        item.latitude,
+        item.longitude
+      );
+      matchesDistance = distance <= maxDistance;
+    }
+
+    return matchesSearch && matchesCategory && matchesDistance;
   });
 
   return (
@@ -68,6 +120,52 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Location & Distance Filter */}
+        <div className="flex flex-wrap items-center gap-4 p-4 bg-white rounded-xl border border-slate-200">
+          <div className="flex items-center gap-2">
+            <Navigation className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Location:</span>
+          </div>
+          
+          {userLocation ? (
+            <span className="text-xs text-emerald-600 font-medium">
+              Detected: {userLocation.latitude.toFixed(2)}, {userLocation.longitude.toFixed(2)}
+            </span>
+          ) : (
+            <button
+              onClick={handleDetectLocation}
+              disabled={isDetectingLocation}
+              className="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+            >
+              {isDetectingLocation ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Detecting...
+                </>
+              ) : (
+                'Detect my location'
+              )}
+            </button>
+          )}
+
+          <div className="h-6 w-px bg-slate-200" />
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Radius:</span>
+            <select
+              value={maxDistance}
+              onChange={(e) => setMaxDistance(Number(e.target.value))}
+              className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+            >
+              {DISTANCE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         {/* Listings Header info */}
         <div className="flex justify-between items-baseline border-b border-slate-200 pb-3">
           <div>
@@ -98,6 +196,7 @@ export const HomePage: React.FC = () => {
               onClick={() => {
                 setSearchQuery('');
                 setSelectedCategory('All');
+                setMaxDistance(0);
               }}
               className="text-xs font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100"
             >
