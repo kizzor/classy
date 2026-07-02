@@ -2,12 +2,21 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { dbService } from '../services/db';
 import { Listing, ChatMessage, User } from '../types';
 import { requestNotificationPermission, showNewMessageNotification } from '../services/notifications';
+import {
+  signUp,
+  signIn,
+  signOut,
+  getCurrentSession,
+  onAuthStateChange,
+  mapSupabaseUserToAppUser,
+} from '../services/auth';
 
 interface AppContextProps {
   listings: Listing[];
   chats: ChatMessage[];
   currentUser: User | null;
   loading: boolean;
+  authLoading: boolean;
   isPostAdOpen: boolean;
   searchQuery: string;
   selectedCategory: string;
@@ -22,6 +31,9 @@ interface AppContextProps {
   hasPaidTemporaryToken: boolean;
   setHasPaidTemporaryToken: (paid: boolean) => void;
   notificationsEnabled: boolean;
+  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -30,6 +42,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [listings, setListings] = useState<Listing[]>([]);
   const [chats, setChats] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
   const [isPostAdOpen, setIsPostAdOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -37,15 +50,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Track if user paid 100 INR to temporarily unlock another posting
   const [hasPaidTemporaryToken, setHasPaidTemporaryToken] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-
-  // Default active user Sarah Connor - initialized with 0 active listings to let users test posting right away!
-  const [currentUser, setCurrentUser] = useState<User | null>({
-    id: 'user_sarah_connor',
-    name: 'Sarah Connor',
-    email: 'sarah.c@classifiedshub.in',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
-    listingsPostedCount: 0,
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Request notification permission on first user interaction
   useEffect(() => {
@@ -56,6 +61,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     document.addEventListener('click', handleFirstInteraction);
     return () => document.removeEventListener('click', handleFirstInteraction);
+  }, []);
+
+  // Listen to auth state changes
+  useEffect(() => {
+    const { data: { subscription } } = onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setCurrentUser(mapSupabaseUserToAppUser(session.user));
+      } else {
+        setCurrentUser(null);
+      }
+      setAuthLoading(false);
+    });
+
+    // Check initial session
+    getCurrentSession().then(({ session }) => {
+      if (session?.user) {
+        setCurrentUser(mapSupabaseUserToAppUser(session.user));
+      }
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -73,6 +100,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     loadInitialData();
   }, []);
+
+  const handleSignUp = async (email: string, password: string, name: string) => {
+    const { error } = await signUp(email, password, name);
+    return { error };
+  };
+
+  const handleSignIn = async (email: string, password: string) => {
+    const { error } = await signIn(email, password);
+    return { error };
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    setCurrentUser(null);
+  };
 
   const addListing = async (listingData: Omit<Listing, 'id' | 'date' | 'sellerId' | 'sellerName'>) => {
     if (!currentUser) {
@@ -97,14 +139,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const sendChatMessage = async (recipientId: string, productId: string, productTitle: string, text: string) => {
     let sender = currentUser;
     if (!sender) {
-      sender = {
-        id: 'user_sarah_connor',
-        name: 'Sarah Connor',
-        email: 'sarah.c@classifiedshub.in',
-        avatar: '',
-        listingsPostedCount: 0,
-      };
-      setCurrentUser(sender);
+      throw new Error('User must be logged in to send messages');
     }
     const created = await dbService.sendChatMessage({
       senderId: sender.id,
@@ -123,16 +158,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleUserLogin = () => {
+    // This is now handled by actual auth - kept for backward compatibility
     if (currentUser) {
-      setCurrentUser(null);
-    } else {
-      setCurrentUser({
-        id: 'user_sarah_connor',
-        name: 'Sarah Connor',
-        email: 'sarah.c@classifiedshub.in',
-        avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
-        listingsPostedCount: 0,
-      });
+      handleSignOut();
     }
   };
 
@@ -147,6 +175,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         chats,
         currentUser,
         loading,
+        authLoading,
         isPostAdOpen,
         searchQuery,
         selectedCategory,
@@ -161,6 +190,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         hasPaidTemporaryToken,
         setHasPaidTemporaryToken,
         notificationsEnabled,
+        signUp: handleSignUp,
+        signIn: handleSignIn,
+        signOut: handleSignOut,
       }}
     >
       {children}

@@ -5,14 +5,12 @@ import { Sparkles, Plus, Search, User, LogOut, LogIn, Menu, X, MessageSquare, Be
 
 export const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { currentUser, setIsPostAdOpen, searchQuery, setSearchQuery, toggleUserLogin, chats, notificationsEnabled } = useApp();
+  const { currentUser, setIsPostAdOpen, searchQuery, setSearchQuery, toggleUserLogin, chats, notificationsEnabled, signOut } = useApp();
   const navigate = useNavigate();
 
   const handlePostAdClick = () => {
     if (!currentUser) {
-      alert('You must be logged in to post an ad! We have simulated a quick log in for you to easily test the flow.');
-      toggleUserLogin(); // Auto-login to make testing seamless
-      setIsPostAdOpen(true);
+      navigate('/auth');
       return;
     }
     setIsPostAdOpen(true);
@@ -21,6 +19,11 @@ export const Navbar: React.FC = () => {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     navigate('/'); // Always redirect to home when searching
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
   };
 
   // Get unread chats count or total chats involving user
@@ -72,17 +75,6 @@ export const Navbar: React.FC = () => {
               )}
             </div>
 
-            {/* Developer Sandbox Toggle */}
-            <button
-              onClick={toggleUserLogin}
-              className="text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-              title="Toggle current user log-in state to inspect different limits"
-              id="dev-auth-toggle"
-            >
-              <User className="w-3 h-3" />
-              Sandbox: {currentUser ? 'Logout' : 'Login'}
-            </button>
-
             <Link to="/" className="text-sm font-medium text-slate-600 hover:text-emerald-600 transition-colors">
               Explore
             </Link>
@@ -112,16 +104,25 @@ export const Navbar: React.FC = () => {
                     {currentUser.name.split(' ')[0]}
                   </span>
                 </Link>
+
+                <button
+                  onClick={handleSignOut}
+                  className="text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                  title="Sign out"
+                >
+                  <LogOut className="w-3 h-3" />
+                  Logout
+                </button>
               </div>
             ) : (
-              <button
-                onClick={toggleUserLogin}
+              <Link
+                to="/auth"
                 className="text-sm font-medium text-slate-600 hover:text-emerald-600 flex items-center gap-1.5"
                 id="nav-login-btn"
               >
                 <LogIn className="w-4 h-4" />
                 Login
-              </button>
+              </Link>
             )}
 
             <button
@@ -136,12 +137,21 @@ export const Navbar: React.FC = () => {
 
           {/* Mobile Menu Action Trigger */}
           <div className="flex md:hidden items-center gap-4">
-            <button
-              onClick={toggleUserLogin}
-              className="text-[10px] font-bold bg-emerald-50 text-emerald-700 p-1.5 rounded-lg border border-emerald-100"
-            >
-              {currentUser ? 'Logout' : 'Login'}
-            </button>
+            {currentUser ? (
+              <button
+                onClick={handleSignOut}
+                className="text-[10px] font-bold bg-slate-100 text-slate-700 p-1.5 rounded-lg"
+              >
+                Logout
+              </button>
+            ) : (
+              <Link
+                to="/auth"
+                className="text-[10px] font-bold bg-emerald-50 text-emerald-700 p-1.5 rounded-lg border border-emerald-100"
+              >
+                Login
+              </Link>
+            )}
             
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
