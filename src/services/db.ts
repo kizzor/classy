@@ -36,6 +36,8 @@ const listingToRow = (l: Listing) => ({
   category: l.category,
   seller_id: l.sellerId,
   seller_name: l.sellerName,
+  latitude: l.latitude ?? null,
+  longitude: l.longitude ?? null,
 });
 
 const rowToListing = (r: any): Listing => ({
@@ -49,6 +51,8 @@ const rowToListing = (r: any): Listing => ({
   category: r.category,
   sellerId: r.seller_id,
   sellerName: r.seller_name,
+  latitude: r.latitude ?? undefined,
+  longitude: r.longitude ?? undefined,
 });
 
 const chatToRow = (m: Omit<ChatMessage, 'id' | 'timestamp'> & { id?: string; timestamp?: string }) => ({
@@ -106,6 +110,8 @@ const seedIfEmpty = async () => {
         category: p.category,
         seller_id: p.sellerId,
         seller_name: p.sellerName,
+        latitude: p.latitude ?? null,
+        longitude: p.longitude ?? null,
       }));
       const { error } = await supabase.from('listings').insert(rows);
       if (error) console.error('Seed insert error:', error);
@@ -124,7 +130,7 @@ export const dbService = {
       const { data, error } = await supabase
         .from('listings')
         .select('*')
-        .order('date', { ascending: false });
+        .order('created_at', { ascending: false });
       if (error) {
         console.error('Supabase fetchListings error:', error);
         return getStoredListings();
